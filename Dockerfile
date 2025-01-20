@@ -20,4 +20,4 @@ RUN mvn clean package -DskipTests
 EXPOSE 8080
 
 # 启动应用
-CMD ["java", "-jar", "/app/target/your-app.jar"]
+CMD ["java", "-jar", "/app/target/wechat-chatwoot-1.0-SNAPSHOT.jar"]
