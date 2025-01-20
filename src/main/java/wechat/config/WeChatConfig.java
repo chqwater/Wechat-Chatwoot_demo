@@ -11,5 +11,6 @@ public class WeChatConfig {
     private String appId;
     private String token;
     private String encodingAesKey;
+
 }
 

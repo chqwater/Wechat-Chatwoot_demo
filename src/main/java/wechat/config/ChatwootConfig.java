@@ -13,5 +13,6 @@ public class ChatwootConfig {
     private Long inboxId;
 
     // Lombok's @Data generates the getter methods
+
 }
 
