@@ -13,11 +13,11 @@ COPY pom.xml /app/
 # 复制 src 目录
 COPY src /app/src/
 
-# 使用 Maven 构建项目
+# 使用 Maven 构建项目（跳过测试）
 RUN mvn clean package -DskipTests
 
 # 暴露端口（Spring Boot 默认端口是 8080）
 EXPOSE 8080
 
-# 运行应用
-CMD ["java", "-jar", "target/your-app.jar"]
+# 启动应用
+CMD ["java", "-jar", "/app/target/your-app.jar"]
