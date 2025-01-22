@@ -73,8 +73,9 @@ public class ChatwootService {
                 responseEntity = restTemplate.getForEntity(conversationUrl, String.class);
                 if (responseEntity.getStatusCode() == HttpStatus.OK) {
                     responseBody = responseEntity.getBody();
+                    System.out.println(responseBody);
                     List<Map<String, Object>> conversations = objectMapper.readValue(responseBody, List.class);
-
+                    System.out.println(conversations);
                     if (!conversations.isEmpty()) {
                         // 获取第一个 conversation 的 id
                         Map<String, Object> firstConversation = conversations.get(0);
@@ -83,7 +84,7 @@ public class ChatwootService {
                         if (idObject instanceof Integer) {
                             conversationId = String.valueOf(idObject); // 将 Integer 转换为 String
                         } else if (idObject instanceof String) {
-                            conversationId = (String) idObject; // 如果是 String，直接使用
+                            conversationId = (String) idObject;
                         } else {
                             throw new IllegalArgumentException("Unexpected type for conversation ID: " + idObject.getClass().getName());
                         }
