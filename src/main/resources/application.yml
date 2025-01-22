@@ -1,5 +1,5 @@
 server:
-  port: 8080
+  port: 80
 
 wechat:
   app-id: wxfafc5e094ec0437e        # 替换为你的微信公众平台的 App ID
