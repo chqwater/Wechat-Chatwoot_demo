@@ -77,8 +77,15 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>repackage</goal>
+                        </goals>
+                    </execution>
+                </executions>
                 <configuration>
-                    <mainClass>wechat.Application</mainClass> <!-- 请替换为你的入口类 -->
+                    <mainClass>wechat.application.Application</mainClass> <!-- 请替换为你的入口类 -->
                 </configuration>
             </plugin>
             <plugin>
