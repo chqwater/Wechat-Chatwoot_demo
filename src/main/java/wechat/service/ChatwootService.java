@@ -22,7 +22,10 @@ public class ChatwootService {
     private static final Logger log = LoggerFactory.getLogger(ChatwootService.class);
 
     public void forwardMessageToChatwoot(String userId, String content) {
-        String url = String.format("%s/accounts/{accountId}/inboxes/{inboxId}/messages", chatwootConfig.getApiUrl());
+        String url = String.format("%s/accounts/%s/inboxes/%d/messages",
+                chatwootConfig.getApiUrl(),
+                "8",  // 这里需要替换为实际的 accountId
+                chatwootConfig.getInboxId());
 
         Map<String, Object> payload = new HashMap<>();
         payload.put("content", content);

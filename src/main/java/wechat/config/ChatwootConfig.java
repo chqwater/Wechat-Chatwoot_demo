@@ -12,7 +12,7 @@ import org.springframework.context.annotation.Configuration;
 public class ChatwootConfig {
     private String apiUrl;
     private String apiToken;
-    private Long inboxId;
+    private String inboxId;
 
     // Lombok's @Data generates the getter methods
 
