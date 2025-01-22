@@ -41,6 +41,7 @@ public class ChatwootService {
         // 设置请求头
         HttpHeaders headers = new HttpHeaders();
         headers.set("Authorization", "Bearer " + chatwootConfig.getApiToken());
+        headers.set("api_access_token", chatwootConfig.getApiToken());
         headers.setContentType(MediaType.APPLICATION_JSON);
         String conversationId = "";
 
@@ -72,7 +73,6 @@ public class ChatwootService {
                 responseEntity = restTemplate.getForEntity(conversationUrl, String.class);
                 if (responseEntity.getStatusCode() == HttpStatus.OK) {
                     responseBody = responseEntity.getBody();
-                    System.out.println(responseBody);
                     List<Map<String, Object>> conversations = objectMapper.readValue(responseBody, List.class);
 
                     if (!conversations.isEmpty()) {
