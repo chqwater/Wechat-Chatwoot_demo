@@ -24,7 +24,7 @@ public class ChatwootService {
     public void forwardMessageToChatwoot(String userId, String content) {
         String url = String.format("%s/accounts/%s/inboxes/%s/messages",
                 chatwootConfig.getApiUrl(),
-                "8",  // 这里需要替换为实际的 accountId
+                "8",
                 chatwootConfig.getInboxId());
 
         Map<String, Object> payload = new HashMap<>();
