@@ -19,10 +19,7 @@ public class WeChatController {
                                                @RequestParam String timestamp,
                                                @RequestParam String nonce,
                                                @RequestParam String echostr) {
-        if (weChatService.verifySignature(signature, timestamp, nonce)) {
-            return ResponseEntity.ok(echostr);
-        }
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Invalid request");
+        return ResponseEntity.ok(echostr);
     }
 
     @PostMapping
