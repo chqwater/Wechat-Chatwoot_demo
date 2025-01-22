@@ -45,7 +45,8 @@
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
-            <optional>true</optional>
+            <version>1.18.24</version> <!-- 使用最新版本 -->
+            <scope>provided</scope>
         </dependency>
 
         <!-- Apache Commons Codec (for SHA1 hash calculation) -->
