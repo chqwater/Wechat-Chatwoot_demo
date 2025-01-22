@@ -17,7 +17,7 @@ COPY src /app/src/
 RUN mvn clean package -DskipTests
 
 # 暴露端口（Spring Boot 默认端口是 8080）
-EXPOSE 8080
+EXPOSE 80
 
 # 启动应用
 CMD ["java", "-jar", "/app/target/wechat-chatwoot-1.0-SNAPSHOT.jar"]
