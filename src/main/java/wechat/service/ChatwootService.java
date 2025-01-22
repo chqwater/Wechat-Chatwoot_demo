@@ -72,6 +72,7 @@ public class ChatwootService {
                 responseEntity = restTemplate.getForEntity(conversationUrl, String.class);
                 if (responseEntity.getStatusCode() == HttpStatus.OK) {
                     responseBody = responseEntity.getBody();
+                    System.out.println(responseBody);
                     List<Map<String, Object>> conversations = objectMapper.readValue(responseBody, List.class);
 
                     if (!conversations.isEmpty()) {
