@@ -7,6 +7,6 @@ wechat:
   encoding-aes-key: O1sOQkLtTbV1TmVEQN1eUCQF5OXscug5WGjHvypj6s7 # 替换为你的 Encoding AES Key
 
 chatwoot:
-  api-url: https://superset.cambodianexpress.com/api/v1   # 替换为你自己的 Chatwoot 实例的 API URL
+  api-url: https://superset.cambodianexpress.com   # 替换为你自己的 Chatwoot 实例的 API URL
   api-token: ifhbYfgTz4YokkFqgPsRrJNJ         # 替换为你从 Chatwoot 获得的 API Token
   inbox-id: 1gfKKCiRJa6KSRnXq87Ezozs     # 替换为你的 Chatwoot inbox ID
