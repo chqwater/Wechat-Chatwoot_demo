@@ -85,7 +85,7 @@
                     </execution>
                 </executions>
                 <configuration>
-                    <mainClass>wechat.application.Application</mainClass> <!-- 请替换为你的入口类 -->
+                    <mainClass>wechat.Application</mainClass> <!-- 请替换为你的入口类 -->
                 </configuration>
             </plugin>
             <plugin>
