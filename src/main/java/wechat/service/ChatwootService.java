@@ -71,7 +71,7 @@ public class ChatwootService {
                 // 获取当前用户的 conversation 列表
                 String conversationUrl = String.format("%s/%s/conversations", url, sourceId);
                 System.out.println(conversationUrl);
-                responseEntity = restTemplate.getForEntity(conversationUrl, String.class);
+                responseEntity = restTemplate.exchange(conversationUrl, HttpMethod.GET, request, String.class);
                 if (responseEntity.getStatusCode() == HttpStatus.OK) {
                     responseBody = responseEntity.getBody();
                     System.out.println(responseBody);
