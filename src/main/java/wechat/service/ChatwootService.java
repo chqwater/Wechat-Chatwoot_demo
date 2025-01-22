@@ -4,13 +4,13 @@ import wechat.config.ChatwootConfig;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
+import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -29,34 +29,79 @@ public class ChatwootService {
      */
     public void forwardMessageToChatwoot(String userId, String content) {
         // 拼接 Chatwoot API URL
-        String url = String.format("%s/accounts/%s/inboxes/%s/messages",
+        String url = String.format("%s/public/api/v1/inboxes/%s/contacts",
                 chatwootConfig.getApiUrl(),
-                "8", // 假设这是固定的账户 ID，可以根据需要动态获取
                 chatwootConfig.getInboxId());
 
         // 创建消息 Payload
         Map<String, Object> payload = new HashMap<>();
-        payload.put("content", content);
-        payload.put("sender", Map.of("identifier", userId));
+        payload.put("name", userId);
+        payload.put("identifier", Map.of("identifier", userId));
 
         // 设置请求头
         HttpHeaders headers = new HttpHeaders();
         headers.set("Authorization", "Bearer " + chatwootConfig.getApiToken());
         headers.setContentType(MediaType.APPLICATION_JSON);
+        String conversationId = new String();
 
         // 构建请求实体
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
 
-        // 发送请求并处理响应
         try {
             // 记录请求 URL 和 Payload
             log.info("Sending message to Chatwoot: URL={} Payload={}", url, payload);
 
-            // 发送 POST 请求
-            restTemplate.postForObject(url, request, String.class);
+            // 发送 POST 请求并获取响应
+            ResponseEntity<String> responseEntity = restTemplate.postForEntity(url, request, String.class);
 
-            // 记录请求成功
-            log.info("Message successfully forwarded to Chatwoot.");
+            // 检查响应状态码
+            if (responseEntity.getStatusCode() == HttpStatus.OK || responseEntity.getStatusCode() == HttpStatus.CREATED) {
+                log.info("Message successfully forwarded to Chatwoot.");
+
+                // 提取响应体
+                String responseBody = responseEntity.getBody();
+                log.info("Response Body: {}", responseBody);
+
+                // 解析 JSON 响应提取 source_id
+                ObjectMapper objectMapper = new ObjectMapper();
+                Map<String, Object> responseMap = objectMapper.readValue(responseBody, Map.class);
+                String sourceId = (String) responseMap.get("source_id");
+
+                // 获取当前用户的conversation列表
+                url = url + String.format("/%s/conversations", sourceId);
+                responseEntity = restTemplate.getForEntity(url, String.class);
+                if (responseEntity.getStatusCode() == HttpStatus.OK) {
+                    responseBody = responseEntity.getBody();
+
+                    List<Map<String, Object>> conversations = objectMapper.readValue(responseBody, List.class);
+
+                    if (!conversations.isEmpty()) {
+                        // 获取第一个 conversation 的 id
+                        Map<String, Object> firstConversation = conversations.get(0);
+                        conversationId = (String) firstConversation.get("id");
+                    } else {
+                        //当前无conversation，创建一个
+                        request = new HttpEntity<>(new HashMap<>(), headers);
+                        responseEntity = restTemplate.postForEntity(url, request, String.class);
+                        if (responseEntity.getStatusCode() == HttpStatus.OK) {
+                            responseBody = responseEntity.getBody();
+                            responseMap = objectMapper.readValue(responseBody, Map.class);
+                            conversationId = (String) responseMap.get("id");
+                        }
+                    }
+                } else {
+                    log.error("Failed to fetch conversations. Status: {}", responseEntity.getStatusCode());
+                }
+
+                url = url + String.format("/%s/messages", conversationId);
+                payload = new HashMap<>();
+                payload.put("content", content);
+                payload.put("echo_id", "none");
+                responseEntity = restTemplate.postForEntity(url, request, String.class);
+
+            } else {
+                log.error("Unexpected response status: {}", responseEntity.getStatusCode());
+            }
         } catch (Exception e) {
             // 记录错误日志
             log.error("Error forwarding message to Chatwoot: {}", e.getMessage());
@@ -64,4 +109,5 @@ public class ChatwootService {
             log.error("Payload: {}", payload);
         }
     }
+
 }
