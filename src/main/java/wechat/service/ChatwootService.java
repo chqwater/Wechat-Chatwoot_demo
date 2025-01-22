@@ -42,7 +42,7 @@ public class ChatwootService {
         HttpHeaders headers = new HttpHeaders();
         headers.set("Authorization", "Bearer " + chatwootConfig.getApiToken());
         headers.setContentType(MediaType.APPLICATION_JSON);
-        String conversationId = new String();
+        String conversationId = "";
 
         // 构建请求实体
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
@@ -67,47 +67,69 @@ public class ChatwootService {
                 Map<String, Object> responseMap = objectMapper.readValue(responseBody, Map.class);
                 String sourceId = (String) responseMap.get("source_id");
 
-                // 获取当前用户的conversation列表
-                url = url + String.format("/%s/conversations", sourceId);
-                responseEntity = restTemplate.getForEntity(url, String.class);
+                // 获取当前用户的 conversation 列表
+                String conversationUrl = String.format("%s/%s/conversations", url, sourceId);
+                responseEntity = restTemplate.getForEntity(conversationUrl, String.class);
                 if (responseEntity.getStatusCode() == HttpStatus.OK) {
                     responseBody = responseEntity.getBody();
-
                     List<Map<String, Object>> conversations = objectMapper.readValue(responseBody, List.class);
 
                     if (!conversations.isEmpty()) {
                         // 获取第一个 conversation 的 id
                         Map<String, Object> firstConversation = conversations.get(0);
-                        conversationId = (String) firstConversation.get("id");
+                        Object idObject = firstConversation.get("id");
+
+                        if (idObject instanceof Integer) {
+                            conversationId = String.valueOf(idObject); // 将 Integer 转换为 String
+                        } else if (idObject instanceof String) {
+                            conversationId = (String) idObject; // 如果是 String，直接使用
+                        } else {
+                            throw new IllegalArgumentException("Unexpected type for conversation ID: " + idObject.getClass().getName());
+                        }
                     } else {
-                        //当前无conversation，创建一个
+                        // 当前无 conversation，创建一个
                         request = new HttpEntity<>(new HashMap<>(), headers);
-                        responseEntity = restTemplate.postForEntity(url, request, String.class);
+                        responseEntity = restTemplate.postForEntity(conversationUrl, request, String.class);
                         if (responseEntity.getStatusCode() == HttpStatus.OK) {
                             responseBody = responseEntity.getBody();
                             responseMap = objectMapper.readValue(responseBody, Map.class);
-                            conversationId = (String) responseMap.get("id");
+                            Object idObject = responseMap.get("id");
+
+                            if (idObject instanceof Integer) {
+                                conversationId = String.valueOf(idObject); // 将 Integer 转换为 String
+                            } else if (idObject instanceof String) {
+                                conversationId = (String) idObject; // 如果是 String，直接使用
+                            } else {
+                                throw new IllegalArgumentException("Unexpected type for conversation ID: " + idObject.getClass().getName());
+                            }
                         }
                     }
                 } else {
                     log.error("Failed to fetch conversations. Status: {}", responseEntity.getStatusCode());
                 }
 
-                url = url + String.format("/%s/messages", conversationId);
+                // 发送消息到 conversation
+                String messageUrl = String.format("%s/%s/messages", conversationUrl, conversationId);
                 payload = new HashMap<>();
                 payload.put("content", content);
                 payload.put("echo_id", "none");
-                responseEntity = restTemplate.postForEntity(url, request, String.class);
 
+                request = new HttpEntity<>(payload, headers);
+                responseEntity = restTemplate.postForEntity(messageUrl, request, String.class);
+
+                if (responseEntity.getStatusCode() == HttpStatus.OK || responseEntity.getStatusCode() == HttpStatus.CREATED) {
+                    log.info("Message successfully sent to Chatwoot conversation.");
+                } else {
+                    log.error("Failed to send message to Chatwoot conversation. Status: {}", responseEntity.getStatusCode());
+                }
             } else {
                 log.error("Unexpected response status: {}", responseEntity.getStatusCode());
             }
         } catch (Exception e) {
             // 记录错误日志
-            log.error("Error forwarding message to Chatwoot: {}", e.getMessage());
+            log.error("Error forwarding message to Chatwoot: {}", e.getMessage(), e);
             log.error("Request URL: {}", url);
             log.error("Payload: {}", payload);
         }
     }
-
 }
