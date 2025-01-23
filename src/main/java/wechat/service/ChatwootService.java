@@ -28,12 +28,11 @@ public class ChatwootService {
      * @param content 消息内容
      */
     public void forwardMessageToChatwoot(String userId, String content) {
-        // 拼接 Chatwoot API URL
         String url = String.format("%s/public/api/v1/inboxes/%s/contacts",
                 chatwootConfig.getApiUrl(),
                 chatwootConfig.getInboxId());
 
-        // 创建消息 Payload
+        // 创建联系人请求的 Payload
         Map<String, Object> payload = new HashMap<>();
         payload.put("name", userId);
         payload.put("identifier", Map.of("identifier", userId));
@@ -41,98 +40,117 @@ public class ChatwootService {
         // 设置请求头
         HttpHeaders headers = new HttpHeaders();
         headers.set("Authorization", "Bearer " + chatwootConfig.getApiToken());
-        headers.set("api_access_token", chatwootConfig.getApiToken());
         headers.setContentType(MediaType.APPLICATION_JSON);
+
         String conversationId = "";
 
         // 构建请求实体
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
 
         try {
-            // 记录请求 URL 和 Payload
             log.info("Sending message to Chatwoot: URL={} Payload={}", url, payload);
 
-            // 发送 POST 请求并获取响应
+            // 创建或获取联系人
             ResponseEntity<String> responseEntity = restTemplate.postForEntity(url, request, String.class);
 
-            // 检查响应状态码
             if (responseEntity.getStatusCode() == HttpStatus.OK || responseEntity.getStatusCode() == HttpStatus.CREATED) {
-                log.info("Message successfully forwarded to Chatwoot.");
+                log.info("Contact successfully created or retrieved.");
 
-                // 提取响应体
+                // 提取联系人响应体
                 String responseBody = responseEntity.getBody();
                 log.info("Response Body: {}", responseBody);
 
-                // 解析 JSON 响应提取 source_id
                 ObjectMapper objectMapper = new ObjectMapper();
                 Map<String, Object> responseMap = objectMapper.readValue(responseBody, Map.class);
                 String sourceId = (String) responseMap.get("source_id");
 
-                // 获取当前用户的 conversation 列表
+                // 获取联系人会话列表
                 String conversationUrl = String.format("%s/%s/conversations", url, sourceId);
-                System.out.println(conversationUrl);
                 responseEntity = restTemplate.exchange(conversationUrl, HttpMethod.GET, request, String.class);
+
                 if (responseEntity.getStatusCode() == HttpStatus.OK) {
                     responseBody = responseEntity.getBody();
-                    System.out.println(responseBody);
+                    log.info("Fetched conversations: {}", responseBody);
+
+                    // 解析会话列表
                     List<Map<String, Object>> conversations = objectMapper.readValue(responseBody, List.class);
-                    System.out.println(conversations);
+
                     if (!conversations.isEmpty()) {
-                        // 获取第一个 conversation 的 id
+                        // 获取第一个会话的 ID
                         Map<String, Object> firstConversation = conversations.get(0);
                         Object idObject = firstConversation.get("id");
 
                         if (idObject instanceof Integer) {
-                            conversationId = String.valueOf(idObject); // 将 Integer 转换为 String
+                            conversationId = String.valueOf(idObject);
                         } else if (idObject instanceof String) {
                             conversationId = (String) idObject;
                         } else {
                             throw new IllegalArgumentException("Unexpected type for conversation ID: " + idObject.getClass().getName());
                         }
                     } else {
-                        // 当前无 conversation，创建一个
-                        request = new HttpEntity<>(new HashMap<>(), headers);
-                        responseEntity = restTemplate.postForEntity(conversationUrl, request, String.class);
-                        if (responseEntity.getStatusCode() == HttpStatus.OK) {
-                            responseBody = responseEntity.getBody();
-                            responseMap = objectMapper.readValue(responseBody, Map.class);
-                            Object idObject = responseMap.get("id");
-
-                            if (idObject instanceof Integer) {
-                                conversationId = String.valueOf(idObject); // 将 Integer 转换为 String
-                            } else if (idObject instanceof String) {
-                                conversationId = (String) idObject; // 如果是 String，直接使用
-                            } else {
-                                throw new IllegalArgumentException("Unexpected type for conversation ID: " + idObject.getClass().getName());
-                            }
-                        }
+                        log.info("No active conversation found. Creating a new one.");
+                        conversationId = createNewConversation(conversationUrl, headers, objectMapper);
                     }
                 } else {
                     log.error("Failed to fetch conversations. Status: {}", responseEntity.getStatusCode());
                 }
 
-                // 发送消息到 conversation
-                String messageUrl = String.format("%s/%s/messages", conversationUrl, conversationId);
-                payload = new HashMap<>();
-                payload.put("content", content);
-                payload.put("echo_id", "none");
+                // 发送消息到会话
+                if (!conversationId.isEmpty()) {
+                    String messageUrl = String.format("%s/%s/messages", conversationUrl, conversationId);
+                    payload = new HashMap<>();
+                    payload.put("content", content);
 
-                request = new HttpEntity<>(payload, headers);
-                responseEntity = restTemplate.postForEntity(messageUrl, request, String.class);
+                    request = new HttpEntity<>(payload, headers);
+                    responseEntity = restTemplate.postForEntity(messageUrl, request, String.class);
 
-                if (responseEntity.getStatusCode() == HttpStatus.OK || responseEntity.getStatusCode() == HttpStatus.CREATED) {
-                    log.info("Message successfully sent to Chatwoot conversation.");
-                } else {
-                    log.error("Failed to send message to Chatwoot conversation. Status: {}", responseEntity.getStatusCode());
+                    if (responseEntity.getStatusCode() == HttpStatus.OK || responseEntity.getStatusCode() == HttpStatus.CREATED) {
+                        log.info("Message successfully sent to Chatwoot conversation.");
+                    } else {
+                        log.error("Failed to send message to Chatwoot conversation. Status: {}", responseEntity.getStatusCode());
+                    }
                 }
             } else {
                 log.error("Unexpected response status: {}", responseEntity.getStatusCode());
             }
         } catch (Exception e) {
-            // 记录错误日志
             log.error("Error forwarding message to Chatwoot: {}", e.getMessage(), e);
-            log.error("Request URL: {}", url);
-            log.error("Payload: {}", payload);
         }
+    }
+
+    /**
+     * 创建一个新的会话
+     *
+     * @param conversationUrl 会话 API 的 URL
+     * @param headers 请求头
+     * @param objectMapper JSON 解析器
+     * @return 创建的会话 ID
+     */
+    private String createNewConversation(String conversationUrl, HttpHeaders headers, ObjectMapper objectMapper) {
+        try {
+            Map<String, Object> createConversationPayload = new HashMap<>();
+            HttpEntity<Map<String, Object>> createConversationRequest = new HttpEntity<>(createConversationPayload, headers);
+
+            ResponseEntity<String> createConversationResponse = restTemplate.postForEntity(conversationUrl, createConversationRequest, String.class);
+
+            if (createConversationResponse.getStatusCode() == HttpStatus.CREATED || createConversationResponse.getStatusCode() == HttpStatus.OK) {
+                String responseBody = createConversationResponse.getBody();
+                log.info("Successfully created a new conversation: {}", responseBody);
+
+                Map<String, Object> createResponseMap = objectMapper.readValue(responseBody, Map.class);
+                Object idObject = createResponseMap.get("id");
+
+                if (idObject instanceof Integer) {
+                    return String.valueOf(idObject);
+                } else if (idObject instanceof String) {
+                    return (String) idObject;
+                }
+            } else {
+                log.error("Failed to create a new conversation. Status: {}", createConversationResponse.getStatusCode());
+            }
+        } catch (Exception e) {
+            log.error("Error occurred while creating a new conversation: {}", e.getMessage(), e);
+        }
+        return "";
     }
 }
